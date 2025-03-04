@@ -1,13 +1,14 @@
 import { User } from "../models/user.model.js";
-import bycrpt from "bcryptjs";
+import bcrypt from 'bcrypt';
+
 import jwt from "jsonwebtoken";
 import getdatauri from "../utils/datauri.js";
-
+const mongoose = require('mongoose');
 
 export const register = async (req, res) => {
     try {
         const { username, email, password } = req.body;
-        if (username || password || email) {
+        if (!username || !password || !email) {
             return res.status(400).json({ message: "All fields are required", success: false });
         }
 
@@ -17,7 +18,7 @@ export const register = async (req, res) => {
             return res.status(400).json({ message: "Email already exists", success: false });
 
         }
-        const hashedPassword = await bycrpt.hash(password, 20);
+        const hashedPassword = await bcrypt.hash(password, 20);
 
         await User.create({
             username,
@@ -140,29 +141,58 @@ export const register = async (req, res) => {
 
 
     export const followorUnfollow = async(req , res) => {
-        try{
-            const userId = req.userId;
-            const {followId} = req.body;
-            const user = await User.findById(userId);
-            const followUser = await User.findById(followId);
-            if(!user || !followUser){
-                return res.status(404).json({message: "User not found", success: false});
+        try {
+            const follower = req.id;
+            const followee = req.params.id;
+        
+            // Self-following check
+            if (follower === followee) {
+                return res.status(400).json({ message: "Haha Sorry...You cannot follow yourself", success: false });
             }
-            if(user.following.includes(followId)){
-                user.following = user.following.filter(id => id !== followId);
-                followUser.followers = followUser.followers.filter(id => id !== userId);
+        
+            // Start a Mongoose session
+            const session = await mongoose.startSession();
+            session.startTransaction();
+        
+            // Fetch both users concurrently within the session
+            const [user, followeeUser] = await Promise.all([
+                User.findById(follower).session(session),
+                User.findById(followee).session(session)
+            ]);
+        
+            // Check if both users exist
+            if (!user || !followeeUser) {
+                await session.abortTransaction();
+                session.endSession();
+                return res.status(404).json({ message: "User not found", success: false });
+            }
+        
+            const isFollowing = user.following.includes(followee);
+        
+            if (isFollowing) {
+                await Promise.all([
+                    User.updateOne({ _id: follower }, { $pull: { following: followee } }, { session }),
+                    User.updateOne({ _id: followee }, { $pull: { followers: follower } }, { session })
+                ]);
+                await session.commitTransaction();
+                session.endSession();
+                return res.status(200).json({ message: 'Unfollowed successfully', success: true });
             } else {
-                user.following.push(followId);
-                followUser.followers.push(userId);
+                await Promise.all([
+                    User.updateOne({ _id: follower }, { $addToSet: { following: followee } }, { session }),
+                    User.updateOne({ _id: followee }, { $addToSet: { followers: follower } }, { session })
+                ]);
+                await session.commitTransaction();
+                session.endSession();
+                return res.status(200).json({ message: 'Followed successfully', success: true });
             }
-            await user.save();
-            await followUser.save();
-            return res.status(200).json({message: "Operation successful", success: true});
-            
+        
         } catch (error) {
-            console.log(error);
-            return res.status(500).json({message: "Internal server error", success: false});
+            console.error(error);
+            if (session) {
+                await session.abortTransaction();
+                session.endSession();
+            }
+            res.status(500).json({ success: false, message: 'Server error' });
         }
-
     }
-    
