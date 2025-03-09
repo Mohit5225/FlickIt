@@ -13,6 +13,8 @@ const isAuthenticated = async (req, res , next)=>{
             return res.status(401).json({message: "Unauthorized", success: false});
         }
         req.userId = decoded.id;
+        console.log("User ID from req:", req.userId);
+
         next();
     } catch (error) {
         console.log(error);

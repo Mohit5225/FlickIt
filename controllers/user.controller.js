@@ -1,9 +1,10 @@
 import { User } from "../models/user.model.js";
-import bcrypt from 'bcrypt';
+
+import bcryptjs from "bcryptjs";
 
 import jwt from "jsonwebtoken";
 import getdatauri from "../utils/datauri.js";
-const mongoose = require('mongoose');
+import mongoose from "mongoose";
 
 export const register = async (req, res) => {
     try {
@@ -18,7 +19,7 @@ export const register = async (req, res) => {
             return res.status(400).json({ message: "Email already exists", success: false });
 
         }
-        const hashedPassword = await bcrypt.hash(password, 20);
+        const hashedPassword = await bcryptjs.hash(password, 20);
 
         await User.create({
             username,
@@ -59,7 +60,16 @@ export const register = async (req, res) => {
             posts: user.posts
         }
         const token = await jwt.sign({id: user._id}, process.env.JWT_SECRET, {expiresIn: "1d"});
-        return res.cookie('token' , token , {httpOnly:true , sameSite:"strict , maxAge : 1*24*60*1000"}).json({message: `Welcome back ${user.username}`, success: true});
+        return res.cookie('token', token, {
+            httpOnly: true,
+            sameSite: "strict", // ✅ Properly formatted string
+            maxAge: 1 * 24 * 60 * 60 * 1000 // ✅ 1 day in milliseconds
+        }).json({ 
+            message: `Welcome back ${user.username}`, 
+            success: true ,
+            user: user
+        });
+        ;
         } catch (error) {
             console.log(error);
             return res.status(500).json({message: "Internal server error", success: false});
@@ -78,7 +88,7 @@ export const register = async (req, res) => {
 
  export const getProfile = async(req, res) => {
         try{
-            const userId = req.params.id;
+            const userID = req.params.id;
             const user = await User.findById(userID);
             return res.status(200).json({user, success: true});
         }
@@ -93,10 +103,12 @@ export const register = async (req, res) => {
             const userId = req.userId;
             const {bio , gender} = req.body;
             const profilePicture = req.file;
-            
+            console.log("Profile Picture:", profilePicture);
+           console.log("User ID from req in editProfile:", userId);
+          
             
 
-            let cloudResponse;
+            let cloudResponse ;
 
             if(profilePicture){
                 const fileUri = getdatauri(profilePicture);
@@ -106,7 +118,7 @@ export const register = async (req, res) => {
             if(!user){
                 return res.status(404).json({message: "User not found", success: false});
             }
-            if(bio) userbio = bio;
+            if(bio) user.bio = bio;
             if(gender) user.gender = gender;
             if(profilePicture) user.profilePicture = cloudResponse.secure_url;
 
@@ -114,17 +126,20 @@ export const register = async (req, res) => {
 
             return res.status(200).json({message: "Profile updated successfully", success: true});
 
-        }catch(error){  
-            console.log(error);
         }
-    
+        
+        
+        catch(error){  
+            console.log("Error in editProfile:", error);
+            return res.status(500).json({message: "Profile update failed", success: false, error: error.message});
+        }
     }
 
 
 
     export const GetsuggestedUsers = async(req , res) => {
         try{
-            const suggestedUsers = await user.find({_id: {$ne:req.Id}}).select("-password")
+            const suggestedUsers = await User.find({_id: {$ne: req.userId}}).select("-password")
             if(!suggestedUsers){
                 return res.status(404).json({message: "No users found", success: false});
             }

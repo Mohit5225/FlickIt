@@ -14,6 +14,7 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import connectDB from './utils/db.js';
 
+import userRouter from './routes/user_route.js';
 const app = express();
 
 // Middleware
@@ -31,6 +32,8 @@ app.get("/", (req, res) => {
         success: true
     });
 });
+
+app.use("/api/v1/user" , userRouter)
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, async () => {
