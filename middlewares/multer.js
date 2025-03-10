@@ -1,7 +1,7 @@
 import multer from 'multer';
 
 // Set up storage - can use diskStorage or memoryStorage
-const storage = multer.diskStorage({
+const storage = multer.memoryStorage({
     destination: (req, file, cb) => {
         cb(null, 'uploads/'); // Directory where files will be saved
     },
@@ -21,6 +21,6 @@ const upload = multer({
         }
         cb(null, true); // File is valid, continue processing
     }
-});
+}); 
 
 export default upload;

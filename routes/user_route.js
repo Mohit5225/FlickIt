@@ -1,4 +1,5 @@
 import express from 'express';
+import upload from '../middlewares/multer.js';
 
 const router = express.Router();
 import { getProfile, login, logout, register } from '../controllers/user.controller.js';
@@ -23,6 +24,6 @@ router.route('/:id/profile')
 
 
 router.route('/profile/edit')
-  .patch(isAuthenticated , editProfile);
+  .patch(isAuthenticated , upload.single('profilePicture') , editProfile);
 
   export default router;
