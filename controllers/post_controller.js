@@ -42,3 +42,33 @@ export const addNewPost =async  (req, res) => {
 }
 
 
+export const getAllPosts = async (req, res) => {
+    try {
+        const posts = await Post.find()
+            .sort({ createdAt: -1 })
+            .populate({ path: 'author', select: 'username , profilePicture' })
+            .populate({ 
+                path: 'comments',
+                options: { sort: { createdAt: -1 },
+                populate: {
+                    path: 'author',
+                    select: 'username, profilePicture'
+                }
+            
+            }
+
+            })  
+            return res.status(200).json({
+                message: "Posts fetched successfully",
+                success: true,
+                posts
+            });
+            
+    } catch (error) {   
+        res.status(500).json({ message: "Internal server error", success: false });
+    }
+}
+
+
+
+
