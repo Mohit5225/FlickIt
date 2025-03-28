@@ -13,8 +13,9 @@ import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import connectDB from './utils/db.js';
-
 import userRouter from './routes/user_route.js';
+import postRouter from './routes/post_route.js';
+import mess
 const app = express();
 
 // Middleware
